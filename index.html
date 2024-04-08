@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -123,8 +123,8 @@
                 tableHTML += "<tr>";
                 tableHTML += "<td class='" + className + "'>" + day + "日</td>";
                 tableHTML += "<td class='" + className + "'>" + getDayOfWeekString(dayOfWeek) + "</td>";
-                tableHTML += "<td><select name='attendance" + day + "'><option value='0'>0</option><option value='0.5'>0.5</option><option value='1.0'>1.0</option></select></td>";
-                tableHTML += "<td><select name='overtime" + day + "'><option value='0'>0</option><option value='0.5'>0.5</option><option value='1.0'>1.0</option></select></td>";
+                tableHTML += "<td><select name='attendance" + day + "'><option value='0' selected>0</option><option value='0.5'>0.5</option><option value='1.0'>1.0</option></select></td>";
+                tableHTML += "<td><select name='overtime" + day + "'><option value='0' selected>0</option><option value='0.5'>0.5</option><option value='1.0'>1.0</option></select></td>";
                 tableHTML += "</tr>";
             }
             tableBody.innerHTML = tableHTML;
@@ -191,24 +191,46 @@
             event.preventDefault(); // デフォルトのフォーム送信をキャンセル
 
             // CSVデータの生成
-            var csvContent = "日付,曜日,出勤,残業時間\n";
-            var tableRows = document.querySelectorAll("#attendanceBody tr");
-            tableRows.forEach(function(row)
-            {
-                var rowData = [];
-                row.querySelectorAll("td").forEach(function(cell)
-                {
-                    rowData.push(cell.textContent.trim());
-                });
-                csvContent += rowData.join(",") + "\n";
-            });
-
-            // CSVデータをダウンロードする
             var selectedYear = document.getElementById("year").value;
             var selectedMonth = document.getElementById("month").value;
             var inputName = document.getElementById("name").value;
+
+            var csvContent = selectedYear + "年," + selectedMonth + "月\n";
+            csvContent += inputName + "\n\n";
+            csvContent += "日付,出勤,残業時間\n";
+            var tableRows = document.querySelectorAll("#attendanceBody tr");
+            tableRows.forEach(function(row, index)
+            {
+                var rowData = [];
+                // 日付と曜日を取得
+                var dateCell = row.querySelector("td:first-child");
+                var dayOfWeekCell = row.querySelector("td:nth-child(2)");
+                if (dateCell && dayOfWeekCell && index < tableRows.length - 1)
+                {
+                    rowData.push(dateCell.textContent.trim()); // 日付を追加
+                    //rowData.push(dayOfWeekCell.textContent.trim()); // 曜日を追加
+                }
+                // 出勤と残業時間を取得
+                var attendanceCell = row.querySelector("select[name^='attendance']");
+                var overtimeCell = row.querySelector("select[name^='overtime']");
+                if (attendanceCell && overtimeCell && index < tableRows.length - 1)  // セルが存在する場合のみ追加
+                {
+                    rowData.push(attendanceCell.value); // 出勤を追加
+                    rowData.push(overtimeCell.value); // 残業時間を追加
+                }
+                csvContent += rowData.join(",") + "\n";
+                // 最終行の場合、合計を追加
+                if (index === tableRows.length - 1)
+                {
+                    var totalAttendance = row.querySelector("td:nth-child(3)").textContent.trim(); // 合計の出勤時間を取得
+                    var totalOvertime = row.querySelector("td:nth-child(4)").textContent.trim(); // 合計の残業時間を取得
+                    csvContent += "合計," + totalAttendance + "," + totalOvertime + "\n";
+                }
+            });
+
+            // CSVデータをダウンロードする
             var csvName = selectedYear + "_" + selectedMonth + "_" + inputName + ".csv";
-            var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            var blob = new Blob([csvContent], { type: 'text/csv;charset=UTF-8;' });
             if (navigator.msSaveBlob) { // IE 10+
                 navigator.msSaveBlob(blob, csvName);
             }
