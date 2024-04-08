@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出面表</title>
+
+    <style>
+        table {
+            width: auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        .sunday, .holiday {
+            color: red;
+        }
+        /* 名前入力欄 */
+        label {
+          font-size: 16px; /* 例として、16pxに設定 */
+        }
+
+        input[type="text"] {
+          font-size: 16px; /* 例として、16pxに設定 */
+        }
+
+        /* 年と月のドロップダウンメニュー */
+        select {
+          font-size: 16px; /* 例として、16pxに設定 */
+        }
+    </style>
+
+</head>
+
+<body>
+    <h1>出面表</h1>
+    <form id="attendanceForm">
+        <!-- 名前入力欄 -->
+        <label for="name">名前:</label>
+        <input type="text" id="name" name="name">
+        <br><br>
+        <!-- 年のドロップダウンメニュー -->
+        <label for="year">年:</label>
+        <select id="year" name="year">
+        </select>
+        <!-- 月のドロップダウンメニュー -->
+        <label for="month">月:</label>
+        <select id="month" name="month">
+        </select>
+        <!-- 日付と曜日、出勤状況、残業時間を表示するテーブル -->
+        <table id="attendanceTable">
+            <thead>
+                <tr>
+                    <th>日付</th>
+                    <th>曜日</th>
+                    <th>出勤</th>
+                    <th>残業時間</th>
+                </tr>
+            </thead>
+            <tbody id="attendanceBody">
+                <!-- JavaScriptで自動生成される日付テーブルの内容 -->
+            </tbody>
+        </table>
+        <br>
+        <button type="submit">保存</button>
+    </form>
+
+    <script>
+        // 年のドロップダウンメニューに選択肢を追加する
+        var yearSelect = document.getElementById("year");
+        var currentYear = new Date().getFullYear();
+        var previousYear = currentYear - 1;
+        yearSelect.innerHTML += "<option value='" + previousYear + "'>" + previousYear + "</option>";
+        yearSelect.innerHTML += "<option value='" + currentYear + "'>" + currentYear + "</option>";
+
+        // 月のドロップダウンメニューに選択肢を追加する
+        var monthSelect = document.getElementById("month");
+        for (var i = 1; i <= 12; i++) {
+            monthSelect.innerHTML += "<option value='" + i + "'>" + i + "月</option>";
+        }
+
+        // 月の選択肢を現在の月の前の月に設定する
+        var currentMonth = new Date().getMonth() + 1;
+        var currentYear = new Date().getFullYear();
+        var defaultYear;
+        var defaultMonth;
+        if (currentMonth !== 1) {
+            defaultYear = currentYear;
+            defaultMonth = currentMonth - 1;
+        } else {
+            defaultYear = currentYear - 1;
+            defaultMonth = 12;
+        }
+        yearSelect.value = defaultYear;
+        monthSelect.value = defaultMonth;
+
+        // 月のドロップダウンメニューの変更を監視して、日付テーブルを更新する
+        monthSelect.addEventListener("change", updateTable);
+        yearSelect.addEventListener("change", updateTable); // 年の変更にも対応
+
+        function updateTable()
+        {
+            var month = document.getElementById("month").value;
+            var year = document.getElementById("year").value;
+            var daysInMonth = new Date(year, month, 0).getDate(); // 選択した月の日数を取得
+            var tableBody = document.getElementById("attendanceBody");
+            var tableHTML = "";
+            // 日付テーブルを生成
+            for (var day = 1; day <= daysInMonth; day++) {
+                var date = new Date(year, month - 1, day); // 日付を表すDateオブジェクトを作成
+                var dayOfWeek = date.getDay(); // 曜日を取得 (0: 日曜日, 1: 月曜日, ..., 6: 土曜日)
+                var className = ""; // 日付セルに適用するクラス名
+                if (dayOfWeek === 0) {
+                    className = "sunday"; // 日曜日は赤色に
+                }
+                // 祝日の判定
+                // ここに祝日の判定を追加する
+                // 祝日の場合は className に "holiday" を追加する
+
+                tableHTML += "<tr>";
+                tableHTML += "<td class='" + className + "'>" + day + "日</td>";
+                tableHTML += "<td class='" + className + "'>" + getDayOfWeekString(dayOfWeek) + "</td>";
+                tableHTML += "<td><select name='attendance" + day + "'><option value='0'>0</option><option value='0.5'>0.5</option><option value='1.0'>1.0</option></select></td>";
+                tableHTML += "<td><select name='overtime" + day + "'><option value='0'>0</option><option value='0.5'>0.5</option><option value='1.0'>1.0</option></select></td>";
+                tableHTML += "</tr>";
+            }
+            tableBody.innerHTML = tableHTML;
+            addChangeEventToSelectBoxes(); // セレクトボックスに変更イベントを追加
+            // 合計を更新
+            updateTotal();
+        }
+
+        // 曜日番号から曜日名を取得する関数
+        function getDayOfWeekString(dayOfWeek) {
+            var daysOfWeek = ["日", "月", "火", "水", "木", "金", "土"];
+            return daysOfWeek[dayOfWeek];
+        }
+
+        // 合計を計算して表示する関数
+        function updateTotal() {
+            var tableBody = document.getElementById("attendanceBody");
+            var tableRows = tableBody.querySelectorAll("tr");
+            // 出勤と残業の合計を格納する変数を初期化
+            var syukkinSum = 0;
+            var zangyouSum = 0;
+
+            // 各行を走査して合計を計算
+            tableRows.forEach(function(row)
+            {
+                // 各行の出勤と残業のセルを取得
+                var attendanceCell = row.querySelector("select[name^='attendance']");
+                var overtimeCell = row.querySelector("select[name^='overtime']");
+                if (attendanceCell && overtimeCell) { // セルが存在する場合のみ計算
+                    // セルの値を数値に変換して合計に加算
+                    syukkinSum += parseFloat(attendanceCell.value) || 0;
+                    zangyouSum += parseFloat(overtimeCell.value) || 0;
+                }
+            });
+
+            // 合計行を更新
+            var totalRow = "<tr>";
+            totalRow += "<td>合計</td>";
+            totalRow += "<td></td>"; // 曜日列
+            totalRow += "<td>" + syukkinSum + "</td>";
+            totalRow += "<td>" + zangyouSum + "</td>";
+            totalRow += "</tr>";
+            tableBody.querySelector("tr:last-child").remove(); // 既存の合計行を削除
+            tableBody.insertAdjacentHTML("beforeend", totalRow); // 新しい合計行を追加
+        }
+
+        // 各セレクトボックスに変更イベントを追加
+        function addChangeEventToSelectBoxes() {
+            var selectElements = document.querySelectorAll("select[name^='attendance'], select[name^='overtime']");
+            selectElements.forEach(function(selectElement) {
+                selectElement.addEventListener("change", function() {
+                    // 合計を更新
+                    updateTotal();
+                });
+            });
+        }
+
+        // 初期表示時にテーブルを更新
+        updateTable();
+
+        // 保存ボタンが押されたときの処理
+        document.getElementById("attendanceForm").addEventListener("submit", function(event)
+        {
+            event.preventDefault(); // デフォルトのフォーム送信をキャンセル
+
+            // CSVデータの生成
+            var csvContent = "日付,曜日,出勤,残業時間\n";
+            var tableRows = document.querySelectorAll("#attendanceBody tr");
+            tableRows.forEach(function(row)
+            {
+                var rowData = [];
+                row.querySelectorAll("td").forEach(function(cell)
+                {
+                    rowData.push(cell.textContent.trim());
+                });
+                csvContent += rowData.join(",") + "\n";
+            });
+
+            // CSVデータをダウンロードする
+            var selectedYear = document.getElementById("year").value;
+            var selectedMonth = document.getElementById("month").value;
+            var inputName = document.getElementById("name").value;
+            var csvName = selectedYear + "_" + selectedMonth + "_" + inputName + ".csv";
+            var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            if (navigator.msSaveBlob) { // IE 10+
+                navigator.msSaveBlob(blob, csvName);
+            }
+            else
+            {
+                var link = document.createElement("a");
+                if (link.download !== undefined)
+                {
+                    var url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", csvName);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
